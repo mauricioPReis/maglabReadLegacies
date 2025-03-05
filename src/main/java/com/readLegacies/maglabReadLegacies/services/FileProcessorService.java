@@ -1,9 +1,11 @@
 package com.readLegacies.maglabReadLegacies.services;
 
 import com.readLegacies.maglabReadLegacies.contribuinte.OrderModel;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
+import java.io.*;
 import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -15,15 +17,29 @@ import java.util.stream.Collectors;
 @Service
 public class FileProcessorService {
 
-    public List<OrderModel> processFile(String filePath) throws IOException {
+    public List<OrderModel> processFile(String fileName) throws IOException {
+        File file = getFileFromResources(fileName);
+        if (file == null || !file.exists()) {
+            throw new FileNotFoundException("Arquivo não encontrado: " + fileName);
+        }
+
         Map<Long, OrderModel> users = new HashMap<>();
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = br.readLine()) != null) {
                 parseLine(line, users);
             }
         }
         return new ArrayList<>(users.values());
+    }
+
+    private File getFileFromResources(String fileName) throws IOException {
+        if (!fileName.endsWith(".txt")) {
+            fileName += ".txt";
+        }
+
+        ClassPathResource resource = new ClassPathResource(fileName);
+        return resource.getFile();
     }
 
     private void parseLine(String line, Map<Long, OrderModel> users) {
@@ -34,7 +50,7 @@ public class FileProcessorService {
         BigDecimal value = new BigDecimal(line.substring(75, 87).trim());
         LocalDate date = LocalDate.parse(line.substring(87, 95), DateTimeFormatter.ofPattern("yyyyMMdd"));
 
-        users.putIfAbsent(userId, new OrderModel(userId, name,null));
+        users.putIfAbsent(userId, new OrderModel(userId, name));
         OrderModel user = users.get(userId);
 
         Optional<OrderModel.Order> existingOrder = user.getOrders().stream()
@@ -47,12 +63,12 @@ public class FileProcessorService {
         } else {
             List<OrderModel.Product> products = new ArrayList<>();
             products.add(new OrderModel.Product(productId, value));
-            user.getOrders().add(new OrderModel.Order(orderId, value, date.toString()));
+            user.getOrders().add(new OrderModel.Order(orderId, value, date.toString(), products));
         }
     }
 
-    public List<OrderModel> filterOrders(String filePath, Long orderId, LocalDate startDate, LocalDate endDate) throws IOException {
-        return processFile(filePath).stream()
+    public List<OrderModel> filterOrders(String fileName, Long orderId, LocalDate startDate, LocalDate endDate) throws IOException {
+        return processFile(fileName).stream()
                 .map(user -> {
                     List<OrderModel.Order> filteredOrders = user.getOrders().stream()
                             .filter(order -> (orderId == null || order.getOrderId().equals(orderId)) &&
@@ -61,7 +77,7 @@ public class FileProcessorService {
                                                     order.getDate().compareTo(endDate.toString()) <= 0)))
                             .collect(Collectors.toList());
 
-                    return new OrderModel(user.getUserId(), user.getName(),filteredOrders);
+                    return new OrderModel(user.getUserId(), user.getName());
                 })
                 .filter(user -> !user.getOrders().isEmpty())
                 .collect(Collectors.toList());

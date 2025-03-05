@@ -15,7 +15,7 @@ public class OrderModel {
     private String name;
     private List<Order> orders = new ArrayList<>();
 
-    public OrderModel(Long userId, String name, List<Order> orders) {
+    public OrderModel(Long userId, String name) {
         this.userId = userId;
         this.name = name;
         this.orders = new ArrayList<>();
@@ -29,11 +29,11 @@ public class OrderModel {
         private String date;
         private List<Product> products = new ArrayList<>();
 
-        public Order(Long orderId, BigDecimal total, String date) {
+        public Order(Long orderId, BigDecimal total, String date, List<Product> products) {
             this.orderId = orderId;
             this.total = total;
             this.date = date;
-            this.products = new ArrayList<>();
+            this.products = products;
         }
     }
 
